@@ -62,7 +62,7 @@ export class PuppeteerConnect {
         throw new Error('❌ Could not connect to the browser after all retries.');
     }
 
-    public static startLocalBrowser(dataDir: string = 'puppeteer_data'): void {
+    public static startLocalBrowser(dataDir: string = 'puppeteer_data'): string {
         if (process.platform !== 'darwin') {
             throw new Error('❌ startLocalBrowser is only supported on macOS (darwin platform).');
         }
@@ -120,25 +120,12 @@ export class PuppeteerConnect {
             handleExit();
             process.exit();
         });
+        return 'http://localhost:9222';
     }
 
-    public static async connectLocalBrowser(dataDir: string = 'puppeteer_data'): Promise<Browser> {
-        this.startLocalBrowser(dataDir);
-
-        const maxAttempts = 10;
-        const waitInterval = 1000; // 1 second
-        const connector = new PuppeteerConnect('http://localhost:9222');
-
-        for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-            const wsUrl = await connector.getBrowserWebSocketURL();
-            if (wsUrl) {
-                return await connector.connectToBrowser();
-            }
-
-            console.log(`⌛ Waiting for local browser... (${attempt}/${maxAttempts})`);
-            await new Promise(res => setTimeout(res, waitInterval));
-        }
-
-        throw new Error('❌ Timed out waiting for local browser to be ready.');
+    public async connectLocalBrowser(dataDir: string = 'puppeteer_data'): Promise<Browser> {
+        const endpoint = PuppeteerConnect.startLocalBrowser(dataDir);
+        this.browserWsEndpoint = endpoint;
+        return await this.connectToBrowser();
     }
 }
