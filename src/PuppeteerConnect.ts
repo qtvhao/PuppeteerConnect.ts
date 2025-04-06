@@ -11,13 +11,12 @@ const BROWSER_WS_ENDPOINT: string = process.env.BROWSER_WS_ENDPOINT || 'http://l
  * Connects to a Puppeteer-controlled browser using `BROWSER_WS_ENDPOINT`, with retries.
  */
 export class PuppeteerConnect {
-    private static browserWsEndpoint: string = BROWSER_WS_ENDPOINT;
+    constructor(
+        private browserWsEndpoint: string = BROWSER_WS_ENDPOINT,
+        private retries: number = MAX_RETRIES
+    ) {}
 
-    public static setBrowserWebSocketEndpoint(endpoint: string): void {
-        this.browserWsEndpoint = endpoint;
-    }
-
-    private static async getBrowserWebSocketURL(): Promise<string | null> {
+    private async getBrowserWebSocketURL(): Promise<string | null> {
         const url: string = `${this.browserWsEndpoint}/json/version`;
         try {
             const response = await fetch(url);
@@ -32,8 +31,8 @@ export class PuppeteerConnect {
         }
     }
 
-    static async connectToBrowser(retries: number = MAX_RETRIES): Promise<Browser> {
-        for (let attempt = 1; attempt <= retries; attempt++) {
+    public async connectToBrowser(): Promise<Browser> {
+        for (let attempt = 1; attempt <= this.retries; attempt++) {
             console.log(`🔍 Attempt ${attempt}: Checking browser status at ${this.browserWsEndpoint}...`);
             const webSocketURL = await this.getBrowserWebSocketURL();
 
@@ -41,7 +40,7 @@ export class PuppeteerConnect {
                 const waitTime = attempt * BASE_WAIT_TIME;
                 console.warn(`⚠️ Browser status check failed. Retrying in ${waitTime / 1000} seconds...`);
                 await new Promise(res => setTimeout(res, waitTime));
-                continue; // Skip connection attempt if status check fails
+                continue;
             }
 
             try {
@@ -51,7 +50,7 @@ export class PuppeteerConnect {
                 return browser;
             } catch (error) {
                 console.error(`❌ Connection attempt ${attempt} failed: ${(error as Error).message}`);
-                if (attempt === retries) {
+                if (attempt === this.retries) {
                     throw new Error('❌ Failed to connect to browser after multiple attempts.');
                 }
 
@@ -63,21 +62,16 @@ export class PuppeteerConnect {
         throw new Error('❌ Could not connect to the browser after all retries.');
     }
 
-    /**
-     * Starts a local Chrome instance with remote debugging enabled.
-     * Equivalent to a shell function for starting Chrome with debugging.
-     * Only works on macOS with Chrome installed in Applications folder.
-     */
     public static startLocalBrowser(dataDir: string = 'puppeteer_data'): void {
         if (process.platform !== 'darwin') {
             throw new Error('❌ startLocalBrowser is only supported on macOS (darwin platform).');
         }
-        
+
         const chromePath = '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
         const args = [
             chromePath,
             '--remote-debugging-port=9222',
-        `--user-data-dir=${path.resolve(process.cwd(), dataDir)}`,
+            `--user-data-dir=${path.resolve(process.cwd(), dataDir)}`,
             '--disable-dev-shm-usage',
             '--disable-software-rasterizer',
             '--disable-proxy-certificate-handler',
@@ -108,7 +102,6 @@ export class PuppeteerConnect {
         chrome.unref();
         console.log('🚀 Started local Chrome with remote debugging on port 9222...');
 
-        // Ensure Chrome is killed when the parent process exits
         const handleExit = () => {
             console.log('🛑 Parent process exiting, attempting to terminate Chrome...');
             try {
@@ -127,5 +120,25 @@ export class PuppeteerConnect {
             handleExit();
             process.exit();
         });
+    }
+
+    public static async connectLocalBrowser(dataDir: string = 'puppeteer_data'): Promise<Browser> {
+        this.startLocalBrowser(dataDir);
+
+        const maxAttempts = 10;
+        const waitInterval = 1000; // 1 second
+        const connector = new PuppeteerConnect('http://localhost:9222');
+
+        for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+            const wsUrl = await connector.getBrowserWebSocketURL();
+            if (wsUrl) {
+                return await connector.connectToBrowser();
+            }
+
+            console.log(`⌛ Waiting for local browser... (${attempt}/${maxAttempts})`);
+            await new Promise(res => setTimeout(res, waitInterval));
+        }
+
+        throw new Error('❌ Timed out waiting for local browser to be ready.');
     }
 }
