@@ -1,5 +1,7 @@
 import puppeteer, { Browser } from 'puppeteer';
+import {spawn} from 'child_process'
 import { BrowserVersionResponse } from './definitions.d/BrowserVersionResponse';
+import path from 'path';
 
 const MAX_RETRIES: number = 3; // Maximum retry attempts
 const BASE_WAIT_TIME: number = 2000; // Base wait time in milliseconds
@@ -59,5 +61,71 @@ export class PuppeteerConnect {
             }
         }
         throw new Error('❌ Could not connect to the browser after all retries.');
+    }
+
+    /**
+     * Starts a local Chrome instance with remote debugging enabled.
+     * Equivalent to a shell function for starting Chrome with debugging.
+     * Only works on macOS with Chrome installed in Applications folder.
+     */
+    public static startLocalBrowser(dataDir: string = 'puppeteer_data'): void {
+        if (process.platform !== 'darwin') {
+            throw new Error('❌ startLocalBrowser is only supported on macOS (darwin platform).');
+        }
+        
+        const chromePath = '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
+        const args = [
+            chromePath,
+            '--remote-debugging-port=9222',
+        `--user-data-dir=${path.resolve(process.cwd(), dataDir)}`,
+            '--disable-dev-shm-usage',
+            '--disable-software-rasterizer',
+            '--disable-proxy-certificate-handler',
+            '--no-sandbox',
+            '--no-first-run',
+            '--disable-features=PrivacySandboxSettings4',
+            '--no-zygote',
+            '--user-agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.3 Safari/605.1.15"'
+        ];
+
+        const chrome = spawn('open', ['-a', 'Google Chrome', '--args', ...args], {
+            detached: true,
+            stdio: 'ignore'
+        });
+
+        chrome.on('error', (err) => {
+            console.error('❌ Failed to start Chrome process:', err);
+        });
+
+        chrome.on('exit', (code, signal) => {
+            if (code !== null) {
+                console.log(`⚠️ Chrome process exited with code ${code}`);
+            } else if (signal !== null) {
+                console.log(`⚠️ Chrome process was killed with signal ${signal}`);
+            }
+        });
+
+        chrome.unref();
+        console.log('🚀 Started local Chrome with remote debugging on port 9222...');
+
+        // Ensure Chrome is killed when the parent process exits
+        const handleExit = () => {
+            console.log('🛑 Parent process exiting, attempting to terminate Chrome...');
+            try {
+                process.kill(chrome.pid!);
+            } catch (err) {
+                console.warn('⚠️ Failed to kill Chrome process:', err);
+            }
+        };
+
+        process.on('exit', handleExit);
+        process.on('SIGINT', () => {
+            handleExit();
+            process.exit();
+        });
+        process.on('SIGTERM', () => {
+            handleExit();
+            process.exit();
+        });
     }
 }
