@@ -69,7 +69,7 @@ export class PuppeteerConnect {
 
         const chromePath = '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
         const args = [
-            chromePath,
+            'https://example.com',
             '--remote-debugging-port=9222',
             `--user-data-dir=${path.resolve(process.cwd(), dataDir)}`,
             '--disable-dev-shm-usage',
