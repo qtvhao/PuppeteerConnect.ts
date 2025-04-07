@@ -140,7 +140,8 @@ export class PuppeteerConnect {
         return pages[0];
     }
 
-    public async waitForPageLogin(page: Page, targetUrl: string, loggedInHostname: string, pollInterval: number = 8000): Promise<void> {
+    public async waitForPageLogin(targetUrl: string, loggedInHostname: string, pollInterval: number = 8000): Promise<void> {
+        const page = await this.getFirstPage();
         await page.goto(targetUrl);
         let url = page.url();
         console.log('Initial URL:', url);
