@@ -1,5 +1,5 @@
 export class UploadFile {
-    async uploadFile(page: any, url: string, selector: string, file: string) {
+    static async uploadFile(page: any, url: string, selector: string, file: string) {
         await page.goto(url);
 
         await page.waitForSelector(selector);
