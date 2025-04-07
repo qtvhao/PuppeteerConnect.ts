@@ -138,6 +138,8 @@ export class PuppeteerConnect {
         if (pages.length === 0) {
             throw new Error('❌ No pages found in the browser.');
         }
+        await pages[0].setViewport({ width: 1440, height: 1520 });
+
         return pages[0];
     }
 
