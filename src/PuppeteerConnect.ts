@@ -1,5 +1,5 @@
 import puppeteer, { Browser, Page } from 'puppeteer';
-import {spawn} from 'child_process'
+import { spawn } from 'child_process'
 import { BrowserVersionResponse } from './definitions.d/BrowserVersionResponse';
 import path from 'path';
 
@@ -14,7 +14,7 @@ export class PuppeteerConnect {
     constructor(
         private browserWsEndpoint: string = BROWSER_WS_ENDPOINT,
         private retries: number = MAX_RETRIES
-    ) {}
+    ) { }
 
     private async getBrowserWebSocketURL(): Promise<string | null> {
         const url: string = `${this.browserWsEndpoint}/json/version`;
@@ -133,6 +133,7 @@ export class PuppeteerConnect {
      */
     public async getFirstPage(): Promise<Page> {
         const browser = await this.connectToBrowser();
+        await new Promise(r => setTimeout(r, 2_000))
         const pages = await browser.pages();
         if (pages.length === 0) {
             throw new Error('❌ No pages found in the browser.');
@@ -145,7 +146,7 @@ export class PuppeteerConnect {
         await page.goto(targetUrl);
         let url = page.url();
         console.log('Initial URL:', url);
-        
+
         if (new URL(url).hostname !== loggedInHostname) {
             while (true) {
                 console.log('Waiting for login...');
