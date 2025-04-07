@@ -1,7 +1,7 @@
-import { Page } from 'puppeteer'
+import { Page, ElementHandle } from 'puppeteer'
 
 export class FindElement {
-    static async waitForElementContainingText(page: Page, textToMatch: string, maxRetries: number = 100, delayMs: number = 8000): Promise<any> {
+    static async waitForElementContainingText(page: Page, textToMatch: string, maxRetries: number = 100, delayMs: number = 8000): Promise<ElementHandle<Element>> {
         console.log('Waiting for element containing text:', textToMatch);
         for (let i = 0; i < maxRetries; i++) {
             await new Promise(resolve => setTimeout(resolve, delayMs));
