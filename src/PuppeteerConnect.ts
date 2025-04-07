@@ -1,4 +1,4 @@
-import puppeteer, { Browser } from 'puppeteer';
+import puppeteer, { Browser, Page } from 'puppeteer';
 import {spawn} from 'child_process'
 import { BrowserVersionResponse } from './definitions.d/BrowserVersionResponse';
 import path from 'path';
@@ -67,7 +67,6 @@ export class PuppeteerConnect {
             throw new Error('❌ startLocalBrowser is only supported on macOS (darwin platform).');
         }
 
-        const chromePath = '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
         const args = [
             'https://example.com',
             '--remote-debugging-port=9222',
@@ -127,5 +126,40 @@ export class PuppeteerConnect {
         const endpoint = PuppeteerConnect.startLocalBrowser(dataDir);
         this.browserWsEndpoint = endpoint;
         return await this.connectToBrowser();
+    }
+
+    /**
+     * Retrieves the first page from the connected browser.
+     */
+    public async getFirstPage(): Promise<Page> {
+        const browser = await this.connectToBrowser();
+        const pages = await browser.pages();
+        if (pages.length === 0) {
+            throw new Error('❌ No pages found in the browser.');
+        }
+        return pages[0];
+    }
+
+    public async waitForPageLogin(page: Page, targetUrl: string, loggedInHostname: string, pollInterval: number = 8000): Promise<void> {
+        await page.goto(targetUrl);
+        let url = page.url();
+        console.log('Initial URL:', url);
+        
+        if (new URL(url).hostname !== loggedInHostname) {
+            while (true) {
+                console.log('Waiting for login...');
+                await new Promise(resolve => setTimeout(resolve, pollInterval));
+                url = page.url();
+                console.log('Current URL:', url);
+                if (new URL(url).hostname === loggedInHostname) {
+                    console.log('✅ Logged in');
+                    break;
+                } else {
+                    console.log('❌ Not logged in yet');
+                }
+            }
+        } else {
+            console.log('✅ Already logged in');
+        }
     }
 }
