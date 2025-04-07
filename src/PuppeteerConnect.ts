@@ -131,14 +131,14 @@ export class PuppeteerConnect {
     /**
      * Retrieves the first page from the connected browser.
      */
-    public async getFirstPage(): Promise<Page> {
+    public async getFirstPage(viewport: { width: number; height: number } = { width: 1440, height: 800 }): Promise<Page> {
         const browser = await this.connectToBrowser();
         await new Promise(r => setTimeout(r, 2_000))
         const pages = await browser.pages();
         if (pages.length === 0) {
             throw new Error('❌ No pages found in the browser.');
         }
-        await pages[0].setViewport({ width: 1440, height: 1520 });
+        await pages[0].setViewport(viewport);
 
         return pages[0];
     }
