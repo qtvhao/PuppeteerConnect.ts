@@ -1,7 +1,9 @@
 import puppeteer, { Browser, Page } from 'puppeteer';
-import { spawn } from 'child_process'
+import { spawn, exec } from 'child_process';
+import { promisify } from 'util';
 import { BrowserVersionResponse } from './definitions.d/BrowserVersionResponse';
 import path from 'path';
+const execAsync = promisify(exec);
 
 const MAX_RETRIES: number = 3; // Maximum retry attempts
 const BASE_WAIT_TIME: number = 2000; // Base wait time in milliseconds
@@ -15,6 +17,16 @@ export class PuppeteerConnect {
         private browserWsEndpoint: string = BROWSER_WS_ENDPOINT,
         private retries: number = MAX_RETRIES
     ) { }
+
+    public static async thereNoChromeProcessesExists(): Promise<boolean> {
+        try {
+            const { stdout } = await execAsync("pgrep -x 'Google Chrome'");
+            return stdout.trim() === '';
+        } catch (error) {
+            // If pgrep fails (e.g. no processes found), assume no Chrome processes are running
+            return true;
+        }
+    }
 
     private async getBrowserWebSocketURL(): Promise<string | null> {
         const url: string = `${this.browserWsEndpoint}/json/version`;
@@ -206,5 +218,11 @@ export class PuppeteerConnect {
                 resolve();
             });
         });
+        while (true) {
+            if (await PuppeteerConnect.thereNoChromeProcessesExists()) {
+                await new Promise(r=>setTimeout(r, 1_000))
+                break;
+            }
+        }
     }
 }
