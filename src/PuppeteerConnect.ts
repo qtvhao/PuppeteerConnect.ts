@@ -166,4 +166,31 @@ export class PuppeteerConnect {
             console.log('✅ Already logged in');
         }
     }
+    /**
+     * Kills all running "Google Chrome" processes (macOS only).
+     */
+    public static killAllChromeProcesses(): void {
+        if (process.platform !== 'darwin') {
+            throw new Error('❌ killAllChromeProcesses is only supported on macOS (darwin platform).');
+        }
+
+        const kill = spawn('killall', ['-9', 'Google Chrome'], {
+            stdio: 'ignore',
+            detached: true
+        });
+
+        kill.on('error', (err) => {
+            console.error('❌ Failed to execute killall:', err);
+        });
+
+        kill.on('exit', (code, signal) => {
+            if (code !== null) {
+                console.log(`🛑 killall exited with code ${code}`);
+            } else if (signal !== null) {
+                console.log(`🛑 killall was killed with signal ${signal}`);
+            }
+        });
+
+        kill.unref();
+    }
 }
