@@ -188,6 +188,7 @@ export class PuppeteerConnect {
         }
 
         const kill = spawn('killall', ['-9', 'Google Chrome']);
+        console.log('🔪 Attempting to kill all "Google Chrome" processes...');
 
         await new Promise<void>((resolve, reject) => {
             kill.on('error', (err) => {
@@ -196,6 +197,7 @@ export class PuppeteerConnect {
             });
 
             kill.on('exit', (code, signal) => {
+                console.log('🧼 Finished attempting to kill processes.');
                 if (code !== null) {
                     console.log(`🛑 killall exited with code ${code}`);
                 } else if (signal !== null) {
