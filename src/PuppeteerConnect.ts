@@ -166,6 +166,19 @@ export class PuppeteerConnect {
             console.log('✅ Already logged in');
         }
     }
+    
+    /**
+     * Disconnects from the currently connected Puppeteer browser.
+     */
+    public async disconnectBrowser(browser: Browser): Promise<void> {
+        try {
+            await browser.disconnect();
+            console.log('🔌 Disconnected from the browser.');
+        } catch (error) {
+            console.error('❌ Failed to disconnect from the browser:', (error as Error).message);
+        }
+    }
+
     /**
      * Kills all running "Google Chrome" processes (macOS only).
      */
