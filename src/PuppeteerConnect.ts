@@ -5,7 +5,7 @@ import { BrowserVersionResponse } from './definitions.d/BrowserVersionResponse';
 import path from 'path';
 const execAsync = promisify(exec);
 
-const MAX_RETRIES: number = 3; // Maximum retry attempts
+const MAX_RETRIES: number = 12; // Maximum retry attempts
 const BASE_WAIT_TIME: number = 2000; // Base wait time in milliseconds
 const BROWSER_WS_ENDPOINT: string = process.env.BROWSER_WS_ENDPOINT || 'http://localhost:21222'; // Default endpoint
 
@@ -35,7 +35,7 @@ export class PuppeteerConnect {
             if (!response.ok) throw new Error(`HTTP ${response.status}: ${response.statusText}`);
 
             const data: BrowserVersionResponse = await response.json();
-            console.log('✅ Browser Info:', JSON.stringify(data, null, 2));
+            // console.log('✅ Browser Info:', JSON.stringify(data, null, 2));
             return data.webSocketDebuggerUrl || null;
         } catch (error) {
             console.error(`❌ Failed to fetch browser WebSocket URL from ${url}:`, (error as Error).message);
@@ -74,7 +74,7 @@ export class PuppeteerConnect {
         throw new Error('❌ Could not connect to the browser after all retries.');
     }
 
-    public static startLocalBrowser(dataDir: string = 'puppeteer_data'): string {
+    public static async startLocalBrowser(dataDir: string = 'puppeteer_data'): Promise<string> {
         if (process.platform !== 'darwin') {
             throw new Error('❌ startLocalBrowser is only supported on macOS (darwin platform).');
         }
@@ -131,11 +131,31 @@ export class PuppeteerConnect {
             handleExit();
             process.exit();
         });
-        return 'http://localhost:9222';
+
+        const endpoint = 'http://localhost:9222';
+        const connector = new PuppeteerConnect(endpoint);
+        let attempts = 0;
+        let webSocketURL: string | null = null;
+
+        while (attempts < MAX_RETRIES && !webSocketURL) {
+            webSocketURL = await connector.getBrowserWebSocketURL();
+            if (!webSocketURL) {
+                const waitTime = (attempts + 1) * BASE_WAIT_TIME;
+                console.warn(`⚠️ Attempt ${attempts + 1}: Unable to fetch WebSocket URL. Retrying in ${waitTime / 1000} seconds...`);
+                await new Promise(res => setTimeout(res, waitTime));
+            }
+            attempts++;
+        }
+
+        if (!webSocketURL) {
+            throw new Error('❌ Failed to retrieve browser WebSocket URL after maximum retries.');
+        }
+
+        return endpoint;
     }
 
     public async connectLocalBrowser(dataDir: string = 'puppeteer_data'): Promise<Browser> {
-        const endpoint = PuppeteerConnect.startLocalBrowser(dataDir);
+        const endpoint = await PuppeteerConnect.startLocalBrowser(dataDir);
         this.browserWsEndpoint = endpoint;
         return await this.connectToBrowser();
     }
