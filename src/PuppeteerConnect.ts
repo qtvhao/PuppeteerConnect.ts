@@ -113,25 +113,6 @@ export class PuppeteerConnect {
         chrome.unref();
         console.log('🚀 Started local Chrome with remote debugging on port 9222...');
 
-        const handleExit = () => {
-            console.log('🛑 Parent process exiting, attempting to terminate Chrome...');
-            try {
-                process.kill(chrome.pid!);
-            } catch (err) {
-                console.warn('⚠️ Failed to kill Chrome process:', err);
-            }
-        };
-
-        process.on('exit', handleExit);
-        process.on('SIGINT', () => {
-            handleExit();
-            process.exit();
-        });
-        process.on('SIGTERM', () => {
-            handleExit();
-            process.exit();
-        });
-
         const endpoint = 'http://localhost:9222';
         const connector = new PuppeteerConnect(endpoint);
         let attempts = 0;
